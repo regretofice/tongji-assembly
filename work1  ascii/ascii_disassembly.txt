@@ -1,0 +1,57 @@
+ascii.o:     file format pe-x86-64
+
+
+Disassembly of section .text:
+
+0000000000000000 <main>:
+   0:   55                      push   rbp
+   1:   48 89 e5                mov    rbp,rsp
+   4:   48 83 ec 30             sub    rsp,0x30
+   8:   e8 00 00 00 00          call   d <main+0xd>
+   ;保存现场，调用main函数
+
+   ;rbp-0x1 是 c
+   ;rbp-0x8 是 i
+   ;rbp-0xc 是 j
+   d:   c6 45 ff 61             mov    BYTE PTR [rbp-0x1],0x61
+  11:   c7 45 f8 02 00 00 00    mov    DWORD PTR [rbp-0x8],0x2 ;给i赋初值
+  18:   eb 40                   jmp    5a <main+0x5a>          ;检查外层循环条件
+
+  1a:   c7 45 f4 01 00 00 00    mov    DWORD PTR [rbp-0xc],0x1 ;给j赋初值
+  21:   eb 23                   jmp    46 <main+0x46>          ;检查内层循环条件
+
+;较为重要
+  23:   0f be 45 ff             movsx  eax,BYTE PTR [rbp-0x1]  ; 取 c，零扩展
+  27:   89 c2                   mov    edx,eax                 ; edx = c (printf 第二个参数)
+  29:   48 8d 05 00 00 00 00    lea    rax,[rip+0x0]           ; 加载格式字符串 "%c " 的地址
+  30:   48 89 c1                mov    rcx,rax                 ; rcx = 格式字符串 (printf 第一个参数)
+  33:   e8 00 00 00 00          call   38 <main+0x38>          ; 调用 printf   
+
+
+  38:   0f b6 45 ff             movzx  eax,BYTE PTR [rbp-0x1]  ; 取 c，零扩展
+  3c:   83 c0 01                add    eax,0x1                 ; ++c
+  3f:   88 45 ff                mov    BYTE PTR [rbp-0x1],al   ;将c存回去
+
+
+  42:   83 45 f4 01             add    DWORD PTR [rbp-0xc],0x1 ;++j
+  46:   83 7d f4 0d             cmp    DWORD PTR [rbp-0xc],0xd ;j与13比大小
+  4a:   7e d7                   jle    23 <main+0x23>          ;检查内层循环是否成立
+
+  4c:   b9 0a 00 00 00          mov    ecx,0xa                 ; '\n' = 10
+  51:   e8 00 00 00 00          call   56 <main+0x56>          ; 调用 putchar
+
+
+  56:   83 6d f8 01             sub    DWORD PTR [rbp-0x8],0x1 ;--i
+  5a:   83 7d f8 00             cmp    DWORD PTR [rbp-0x8],0x0 ;外层循环
+  5e:   75 ba                   jne    1a <main+0x1a>          ;外层循环
+
+   ;复原现场，返回0，释放局部变量空间
+  60:   b8 00 00 00 00          mov    eax,0x0
+  65:   48 83 c4 30             add    rsp,0x30
+  69:   5d                      pop    rbp
+  6a:   c3                      ret
+  6b:   90                      nop
+  6c:   90                      nop
+  6d:	90                   	nop
+  6e:	90                   	nop
+  6f:	90                   	nop

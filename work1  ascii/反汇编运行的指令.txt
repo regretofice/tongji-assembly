@@ -1,0 +1,2 @@
+gcc -c ascii.c -o ascii.o
+objdump -d -M intel ascii.o  
