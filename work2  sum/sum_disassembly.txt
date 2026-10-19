@@ -1,0 +1,63 @@
+
+sum.o:     file format pe-x86-64
+
+
+Disassembly of section .text:
+
+0000000000000000 <main>:
+   0:	55                   	push   rbp
+   1:	48 89 e5             	mov    rbp,rsp
+   4:	48 83 ec 30          	sub    rsp,0x30
+   8:	e8 00 00 00 00       	call   d <main+0xd>
+   ;保存现场，调用main函数
+
+   ;[rbp-0x4] 是 sum
+   ;[rbp-0x8] 是 i
+   ;
+   d:	c7 45 fc 00 00 00 00 	mov    DWORD PTR [rbp-0x4],0x0   ;sum赋初始值0
+  14:	48 8d 45 f8          	lea    rax,[rbp-0x8]             ; rax = &i
+  18:	48 89 c2             	mov    rdx,rax                   ; scanf 第二参数 = &i
+  1b:	48 8d 05 00 00 00 00 	lea    rax,[rip+0x0]          ; rax = 格式串 "%d" 的地址，未重定位
+  22:	48 89 c1             	mov    rcx,rax                   ; scanf 第一参数 = 格式串
+  25:	e8 00 00 00 00       	call   2a <main+0x2a>            ;调用scanf,当前未进行连接
+
+;循环内部
+
+  2a:	eb 0f                	jmp    3b <main+0x3b>            ;跳转到条件检查
+  2c:	8b 45 f8             	mov    eax,DWORD PTR [rbp-0x8]   ;eax=i
+  2f:	01 45 fc             	add    DWORD PTR [rbp-0x4],eax   ;sum+=eax
+  32:	8b 45 f8             	mov    eax,DWORD PTR [rbp-0x8]   ;eax=i
+  35:	83 e8 01             	sub    eax,0x1                   ;eax--   
+  38:	89 45 f8             	mov    DWORD PTR [rbp-0x8],eax   ;i=eax
+  3b:	8b 45 f8             	mov    eax,DWORD PTR [rbp-0x8]   ;eax=i
+  3e:	85 c0                	test   eax,eax                   ;检查i是否为0
+  40:	75 ea                	jne    2c <main+0x2c>            ;i != 0 则跳回循环体
+
+
+  42:	8b 45 fc             	mov    eax,DWORD PTR [rbp-0x4]   ;eax=sum
+  45:	89 c2                	mov    edx,eax                   ;printf 第二参数 = sum
+  47:	48 8d 05 00 00 00 00 	lea    rax,[rip+0x0]             ;rax = 格式串 "%d"，未重定位
+  4e:	48 89 c1             	mov    rcx,rax                   ;printf 第一参数 = 格式串
+  51:	e8 00 00 00 00       	call   56 <main+0x56>            ;调用printf,当前未进行连接
+
+
+
+  56:	b8 00 00 00 00       	mov    eax,0x0                ;return 0
+  5b:	48 83 c4 30          	add    rsp,0x30               ;回收栈空间
+  5f:	5d                   	pop    rbp                    ;恢复旧 rbp
+  60:	c3                   	ret
+  61:	90                   	nop
+  62:	90                   	nop
+  63:	90                   	nop
+  64:	90                   	nop
+  65:	90                   	nop
+  66:	90                   	nop
+  67:	90                   	nop
+  68:	90                   	nop
+  69:	90                   	nop
+  6a:	90                   	nop
+  6b:	90                   	nop
+  6c:	90                   	nop
+  6d:	90                   	nop
+  6e:	90                   	nop
+  6f:	90                   	nop
