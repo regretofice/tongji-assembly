@@ -1,0 +1,55 @@
+
+9mul9_table.o:     file format pe-x86-64
+
+
+Disassembly of section .text:
+
+0000000000000000 <main>:
+   0:	55                   	push   rbp                       ;保存调用者(main的上一层)的栈基址
+   1:	48 89 e5             	mov    rbp,rsp                   ;新建当前的栈基址
+   4:	48 83 ec 30          	sub    rsp,0x30                  ;在栈上开辟 48 字节的局部变量空间
+   8:	e8 00 00 00 00       	call   d <main+0xd>
+   ;保存现场，调用main函数
+
+   ;[rbp-0x4] 是 i
+   ;[rbp-0x8] 是 j
+   ;
+   d:	c7 45 fc 09 00 00 00 	mov    DWORD PTR [rbp-0x4],0x9   ;外层for循环初始化i=9
+  14:	eb 49                	jmp    5f <main+0x5f>            ;检查是否进入循环
+
+   ;内层循环
+  16:	c7 45 f8 01 00 00 00 	mov    DWORD PTR [rbp-0x8],0x1   ;内层for循环初始化j=1
+  1d:	eb 2a                	jmp    49 <main+0x49>            ;检查是否进入循环
+
+  ;printf相关部分(省略部分较为简单的寄存器传送)
+  1f:	8b 45 fc             	mov    eax,DWORD PTR [rbp-0x4]   ;eax = i
+  22:	0f af 45 f8          	imul   eax,DWORD PTR [rbp-0x8]   ;eax*=j(有符号乘)
+  26:	89 c2                	mov    edx,eax                   
+  28:	8b 4d f8             	mov    ecx,DWORD PTR [rbp-0x8]   
+  2b:	8b 45 fc             	mov    eax,DWORD PTR [rbp-0x4]
+  2e:	41 89 d1             	mov    r9d,edx 
+  31:	41 89 c8             	mov    r8d,ecx
+  34:	89 c2                	mov    edx,eax
+  36:	48 8d 05 00 00 00 00 	lea    rax,[rip+0x0]        # 3d <main+0x3d> ;将格式化字符串的地址存入rax(未连接)
+  3d:	48 89 c1             	mov    rcx,rax
+  40:	e8 00 00 00 00       	call   45 <main+0x45>            ;调用printf
+   ;Windows 64位下，printf前四个参数依次放 RCX, RDX, R8, R9
+
+  45:	83 45 f8 01          	add    DWORD PTR [rbp-0x8],0x1   ;++j
+  49:	8b 45 f8             	mov    eax,DWORD PTR [rbp-0x8]   ;将j存入eax
+  4c:	3b 45 fc             	cmp    eax,DWORD PTR [rbp-0x4]   ;比较i,j的大小
+  4f:	7e ce                	jle    1f <main+0x1f>            ;根据大小关系决定是否继续循环
+   ;内层循环结束
+
+  51:	b9 0a 00 00 00       	mov    ecx,0xa                   ;向ecx存入换行符'\n'
+  56:	e8 00 00 00 00       	call   5b <main+0x5b>            ;调用putchar
+  5b:	83 6d fc 01          	sub    DWORD PTR [rbp-0x4],0x1   ;--i
+  5f:	83 7d fc 00          	cmp    DWORD PTR [rbp-0x4],0x0   ;外层for循环的结束条件判断
+  63:	75 b1                	jne    16 <main+0x16>            ;外层循环的结束判断,未结束则跳转
+
+
+
+  65:	b8 00 00 00 00       	mov    eax,0x0                   ;return 0
+  6a:	48 83 c4 30          	add    rsp,0x30                  ;回收栈空间
+  6e:	5d                   	pop    rbp                       ;恢复旧 rbp
+  6f:	c3                   	ret
