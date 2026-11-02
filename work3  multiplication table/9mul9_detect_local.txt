@@ -1,0 +1,94 @@
+
+9mul9_detect_local.o:     file format pe-x86-64
+
+;其实绝大部分跟全局变量版差不多，就是多了一个从静态区拷贝到栈上的过程+地址换了个位置
+
+Disassembly of section .text:
+
+0000000000000000 <main>:
+   0:	55                   	push   rbp                       ;保存调用者(main的上一层)的栈基址
+   1:	48 81 ec 70 01 00 00 	sub    rsp,0x170                 ;在栈上开辟0x170 = 368字节局部空间
+   8:	48 8d ac 24 80 00 00 	lea    rbp,[rsp+0x80]
+   f:	00 
+  10:	e8 00 00 00 00       	call   15 <main+0x15>            
+  ;保存现场,调用main函数
+
+
+   ;局部数组初始化:从常量区复制到栈上
+  15:	48 8d 45 a0          	lea    rax,[rbp-0x60]            ;目标地址：栈上的table起始地址
+  19:	48 8d 15 00 00 00 00 	lea    rdx,[rip+0x0]        # 20 <main+0x20> ;源地址：只读数据段里保存的81个int初值表
+  20:	b9 44 01 00 00       	mov    ecx,0x144                 ;源地址：只读数据段里保存的81个int 初值表(81*4)
+  25:	49 89 c8             	mov    r8,rcx
+  28:	48 89 c1             	mov    rcx,rax
+  2b:	e8 00 00 00 00       	call   30 <main+0x30>            ;调用memcpy
+
+
+  30:	c7 85 ec 00 00 00 01 	mov    DWORD PTR [rbp+0xec],0x1  ;外层for循环初始化i=1
+  37:	00 00 00 
+  3a:	eb 7f                	jmp    bb <main+0xbb>            ;检查是否进入循环
+
+
+  3c:	c7 85 e8 00 00 00 01 	mov    DWORD PTR [rbp+0xe8],0x1  ;内层for循环初始化j=1
+  43:	00 00 00 
+  46:	eb 63                	jmp    ab <main+0xab>            ;检查是否进入循环
+
+   
+  48:	8b 85 ec 00 00 00    	mov    eax,DWORD PTR [rbp+0xec]  ;eax = i
+  4e:	0f af 85 e8 00 00 00 	imul   eax,DWORD PTR [rbp+0xe8]  ;eax *= j  (eax = i*j)
+  55:	89 c1                	mov    ecx,eax                   ;ecx = i*j
+  57:	8b 85 ec 00 00 00    	mov    eax,DWORD PTR [rbp+0xec]  ;取数组第一维参数
+  5d:	83 e8 01             	sub    eax,0x1
+  60:	8b 95 e8 00 00 00    	mov    edx,DWORD PTR [rbp+0xe8]  ;取数组第二维参数
+  66:	83 ea 01             	sub    edx,0x1
+  69:	4c 63 c2             	movsxd r8,edx                    ;复制并拓展位数至64位
+  6c:	48 63 d0             	movsxd rdx,eax
+
+   ;取出内存中的元素并存入eax  
+  6f:	48 89 d0             	mov    rax,rdx                   ;loc = i-1
+  72:	48 c1 e0 03          	shl    rax,0x3                   ;左移3位(*8)
+  76:	48 01 d0             	add    rax,rdx                   ;加一次，相当于*9，因为第二维占用9个偏移量
+  79:	4c 01 c0             	add    rax,r8                    ;loc += j-1
+  7c:	8b 44 85 a0          	mov    eax,DWORD PTR [rbp+rax*4-0x60]  ;从栈上的局部数组取元素(rbp-0x60是局部table的起始地址)
+  80:	39 c1                	cmp    ecx,eax                   ;比较i*j与栈中的数据
+  82:	74 20                	je     a4 <main+0xa4>
+
+   ;下面这四步是可以合并的，但是由于这是-O0 ,所以没有优化
+  84:	8b 95 e8 00 00 00    	mov    edx,DWORD PTR [rbp+0xe8]
+  8a:	8b 85 ec 00 00 00    	mov    eax,DWORD PTR [rbp+0xec]
+  90:	41 89 d0             	mov    r8d,edx
+  93:	89 c2                	mov    edx,eax
+  95:	48 8d 05 00 00 00 00 	lea    rax,[rip+0x0]        # 9c <main+0x9c> ;将格式化字符串的地址存入rax(未连接)
+  9c:	48 89 c1             	mov    rcx,rax
+  9f:	e8 00 00 00 00       	call   a4 <main+0xa4>            ;调用printf
+   ;Windows 64位下，printf前四个参数依次放 RCX, RDX, R8, R9
+
+  a4:	83 85 e8 00 00 00 01 	add    DWORD PTR [rbp+0xe8],0x1  ;++j   
+  ab:	83 bd e8 00 00 00 09 	cmp    DWORD PTR [rbp+0xe8],0x9  ;外层for循环的结束条件判断
+  b2:	7e 94                	jle    48 <main+0x48>            ;外层循环的结束判断,未结束则跳转
+
+
+  b4:	83 85 ec 00 00 00 01 	add    DWORD PTR [rbp+0xec],0x1  ;++i
+  bb:	83 bd ec 00 00 00 09 	cmp    DWORD PTR [rbp+0xec],0x9  ;外层for循环的结束条件判断
+  c2:	0f 8e 74 ff ff ff    	jle    3c <main+0x3c>            ;外层循环的结束判断,未结束则跳转
+
+
+  c8:	48 8d 05 0d 00 00 00 	lea    rax,[rip+0xd]        # dc <main+0xdc> ;将格式化字符串的地址存入rax(未连接)
+  cf:	48 89 c1             	mov    rcx,rax
+  d2:	e8 00 00 00 00       	call   d7 <main+0xd7>            ;调用printf
+
+   ;main函数结束
+  d7:	b8 00 00 00 00       	mov    eax,0x0                   ;return 0
+  dc:	48 81 c4 70 01 00 00 	add    rsp,0x170                 ;回收栈空间
+  e3:	5d                   	pop    rbp                       ;恢复旧 rbp
+  e4:	c3                   	ret
+  e5:	90                   	nop
+  e6:	90                   	nop
+  e7:	90                   	nop
+  e8:	90                   	nop
+  e9:	90                   	nop
+  ea:	90                   	nop
+  eb:	90                   	nop
+  ec:	90                   	nop
+  ed:	90                   	nop
+  ee:	90                   	nop
+  ef:	90                   	nop
