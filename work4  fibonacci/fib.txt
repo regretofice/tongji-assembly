@@ -1,0 +1,287 @@
+
+fib.o:     file format pe-x86-64
+
+
+Disassembly of section .text:
+
+; ==================== calc 函数 ====================
+; int calc(int n)
+; [rbp+0x10] 保存参数 n
+; [rbp-0x4] 是循环变量 i
+; max_len = 21，对应反汇编中的 0x15
+; Windows x64 下整数/指针参数依次使用 RCX, RDX, R8, R9
+0000000000000000 <calc>:
+   0:	55                   	push   rbp                         ; 保存调用者的栈基址
+   1:	48 89 e5             	mov    rbp,rsp                     ; 建立当前函数的栈基址
+   4:	48 83 ec 30          	sub    rsp,0x30                    ; 开辟 48 字节局部变量空间
+   8:	89 4d 10             	mov    DWORD PTR [rbp+0x10],ecx    ; 将参数 n 保存到[rbp+0x10]
+
+   ; if (fib[n][0] != 0) return;
+   b:	8b 45 10             	mov    eax,DWORD PTR [rbp+0x10]    ; eax = n
+   e:	48 98                	cdqe                               ; eax 符号扩展为 rax
+  10:	48 6b c0 58          	imul   rax,rax,0x58                ; rax = n * 0x58 = n * 88，即 n 行 int 的字节偏移
+  14:	48 8d 15 20 00 00 00 	lea    rdx,[rip+0x20]              ; 取全局数组 fib 的基地址（重定位未连接）
+  1b:	8b 04 10             	mov    eax,DWORD PTR [rax+rdx*1]   ; eax = fib[n][0]
+  1e:	85 c0                	test   eax,eax                     ; 判断 fib[n][0] 是否为 0
+  20:	0f 85 b4 01 00 00    	jne    1da <calc+0x1da>           ; 若已计算，直接跳到函数返回
+
+   ; calc(n - 2);
+  26:	8b 45 10             	mov    eax,DWORD PTR [rbp+0x10]    ; eax = n
+  29:	83 e8 02             	sub    eax,0x2                     ; eax = n - 2
+  2c:	89 c1                	mov    ecx,eax                     ; 第一个参数 n-2 放入 ecx
+  2e:	e8 cd ff ff ff       	call   0 <calc>                    ; 递归调用 calc(n - 2)
+
+   ; calc(n - 1);
+  33:	8b 45 10             	mov    eax,DWORD PTR [rbp+0x10]    ; eax = n
+  36:	83 e8 01             	sub    eax,0x1                     ; eax = n - 1
+  39:	89 c1                	mov    ecx,eax                     ; 第一个参数 n-1 放入 ecx
+  3b:	e8 c0 ff ff ff       	call   0 <calc>                    ; 递归调用 calc(n - 1)
+
+   ; for (int i = 1; i <= max_len; ++i)
+  40:	c7 45 fc 01 00 00 00 	mov    DWORD PTR [rbp-0x4],0x1     ; i = 1
+  47:	e9 67 01 00 00       	jmp    1b3 <calc+0x1b3>           ; 跳到循环条件判断
+
+   ; 循环体开始
+   ; 计算 fib[n][i] 的地址：fib + (n*22 + i)*4
+  4c:	8b 45 fc             	mov    eax,DWORD PTR [rbp-0x4]     ; eax = i
+  4f:	48 98                	cdqe                               ; i 符号扩展为 rax
+  51:	8b 55 10             	mov    edx,DWORD PTR [rbp+0x10]    ; edx = n
+  54:	48 63 d2             	movsxd rdx,edx                           ; edx 符号扩展为 rdx
+  57:	48 6b d2 16          	imul   rdx,rdx,0x16                ; rdx = n * 22
+  5b:	48 01 d0             	add    rax,rdx                     ; rax = n*22 + i
+  5e:	48 8d 14 85 00 00 00 	lea    rdx,[rax*4+0x0]             ; rdx = (n*22 + i) * 4，得到字节偏移
+  65:	00 
+  66:	48 8d 05 20 00 00 00 	lea    rax,[rip+0x20]              ; 取全局数组 fib 的基地址
+  6d:	8b 0c 02             	mov    ecx,DWORD PTR [rdx+rax*1]   ; ecx = fib[n][i]
+
+   ; 读取 fib[n - 1][i]
+  70:	8b 45 10             	mov    eax,DWORD PTR [rbp+0x10]    ; eax = n
+  73:	8d 50 ff             	lea    edx,[rax-0x1]                ; edx = n - 1
+  76:	8b 45 fc             	mov    eax,DWORD PTR [rbp-0x4]     ; eax = i
+  79:	48 98                	cdqe                               ; i 符号扩展
+  7b:	48 63 d2             	movsxd rdx,edx                           ; n-1 符号扩展
+  7e:	48 6b d2 16          	imul   rdx,rdx,0x16                ; rdx = (n-1) * 22
+  82:	48 01 d0             	add    rax,rdx                     ; rax = (n-1)*22 + i
+  85:	48 8d 14 85 00 00 00 	lea    rdx,[rax*4+0x0]             ; 转成字节偏移
+  8c:	00 
+  8d:	48 8d 05 20 00 00 00 	lea    rax,[rip+0x20]              ; 取 fib 基地址
+  94:	44 8b 04 02          	mov    r8d,DWORD PTR [rdx+rax*1]   ; r8d = fib[n-1][i]
+
+   ; 读取 fib[n - 2][i]
+  98:	8b 45 10             	mov    eax,DWORD PTR [rbp+0x10]    ; eax = n
+  9b:	8d 50 fe             	lea    edx,[rax-0x2]                ; edx = n - 2
+  9e:	8b 45 fc             	mov    eax,DWORD PTR [rbp-0x4]     ; eax = i
+  a1:	48 98                	cdqe                               ; i 符号扩展
+  a3:	48 63 d2             	movsxd rdx,edx                           ; n-2 符号扩展
+  a6:	48 6b d2 16          	imul   rdx,rdx,0x16                ; rdx = (n-2) * 22
+  aa:	48 01 d0             	add    rax,rdx                     ; rax = (n-2)*22 + i
+  ad:	48 8d 14 85 00 00 00 	lea    rdx,[rax*4+0x0]             ; 转成字节偏移
+  b4:	00 
+  b5:	48 8d 05 20 00 00 00 	lea    rax,[rip+0x20]              ; 取 fib 基地址
+  bc:	8b 04 02             	mov    eax,DWORD PTR [rdx+rax*1]   ; eax = fib[n-2][i]
+
+  ; fib[n][i] += fib[n-1][i] + fib[n-2][i];
+  bf:	44 01 c0             	add    eax,r8d                     ; eax = fib[n-1][i] + fib[n-2][i]
+  c2:	01 c1                	add    ecx,eax                     ; ecx = fib[n][i] + fib[n-1][i] + fib[n-2][i]
+
+  ; 计算并写回 fib[n][i]
+  c4:	8b 45 fc             	mov    eax,DWORD PTR [rbp-0x4]     ; eax = i
+  c7:	48 98                	cdqe                               ; i 符号扩展
+  c9:	8b 55 10             	mov    edx,DWORD PTR [rbp+0x10]    ; edx = n
+  cc:	48 63 d2             	movsxd rdx,edx                           ; n 符号扩展
+  cf:	48 6b d2 16          	imul   rdx,rdx,0x16                ; rdx = n * 22
+  d3:	48 01 d0             	add    rax,rdx                     ; rax = n*22 + i
+  d6:	48 8d 14 85 00 00 00 	lea    rdx,[rax*4+0x0]             ; 转成字节偏移
+  dd:	00 
+  de:	48 8d 05 20 00 00 00 	lea    rax,[rip+0x20]              ; 取 fib 基地址
+  e5:	89 0c 02             	mov    DWORD PTR [rdx+rax*1],ecx   ; fib[n][i] = 累加结果
+
+  ; if (fib[n][i] >= 10)
+  e8:	8b 45 fc             	mov    eax,DWORD PTR [rbp-0x4]     ; eax = i
+  eb:	48 98                	cdqe                               ; i 符号扩展
+  ed:	8b 55 10             	mov    edx,DWORD PTR [rbp+0x10]    ; edx = n
+  f0:	48 63 d2             	movsxd rdx,edx                           ; n 符号扩展
+  f3:	48 6b d2 16          	imul   rdx,rdx,0x16                ; rdx = n * 22
+  f7:	48 01 d0             	add    rax,rdx                     ; rax = n*22 + i
+  fa:	48 8d 14 85 00 00 00 	lea    rdx,[rax*4+0x0]             ; 转成字节偏移
+ 101:	00 
+ 102:	48 8d 05 20 00 00 00 	lea    rax,[rip+0x20]              ; 取 fib 基地址
+ 109:	8b 04 02             	mov    eax,DWORD PTR [rdx+rax*1]   ; eax = fib[n][i]
+ 10c:	83 f8 09             	cmp    eax,0x9                     ; 与 9 比较
+ 10f:	0f 8e 9a 00 00 00    	jle    1af <calc+0x1af>           ; 若 <= 9，则不需要进位，跳到 ++i
+
+  ; fib[n][i] %= 10;
+  ; 下面是一段 -O0 下由除法取模展开出的魔数运算
+ 115:	8b 45 fc             	mov    eax,DWORD PTR [rbp-0x4]     ; eax = i
+ 118:	48 98                	cdqe                               ; i 符号扩展
+ 11a:	8b 55 10             	mov    edx,DWORD PTR [rbp+0x10]    ; edx = n
+ 11d:	48 63 d2             	movsxd rdx,edx                           ; n 符号扩展
+ 120:	48 6b d2 16          	imul   rdx,rdx,0x16                ; rdx = n * 22
+ 124:	48 01 d0             	add    rax,rdx                     ; rax = n*22 + i
+ 127:	48 8d 14 85 00 00 00 	lea    rdx,[rax*4+0x0]             ; 转成字节偏移
+ 12e:	00 
+ 12f:	48 8d 05 20 00 00 00 	lea    rax,[rip+0x20]              ; 取 fib 基地址
+ 136:	8b 0c 02             	mov    ecx,DWORD PTR [rdx+rax*1]   ; ecx = fib[n][i]
+ 139:	48 63 c1             	movsxd rax,ecx                           ; ecx 符号扩展
+ 13c:	48 69 c0 67 66 66 66 	imul   rax,rax,0x66666667          ; 除法魔数乘法，用于计算除以 10
+ 143:	48 c1 e8 20          	shr    rax,0x20                    ; 取高 32 位
+ 147:	89 c2                	mov    edx,eax                     ; edx = 高 32 位结果
+ 149:	c1 fa 02             	sar    edx,0x2                     ; 算术右移，修正除法结果
+ 14c:	89 c8                	mov    eax,ecx                     ; eax = 原值
+ 14e:	c1 f8 1f             	sar    eax,0x1f                    ; 取符号位
+ 151:	29 c2                	sub    edx,eax                     ; edx = fib[n][i] / 10
+ 153:	89 d0                	mov    eax,edx                     ; eax = 商
+ 155:	c1 e0 02             	shl    eax,0x2                     ; eax = 商 * 4
+ 158:	01 d0                	add    eax,edx                     ; eax = 商 * 5
+ 15a:	01 c0                	add    eax,eax                     ; eax = 商 * 10
+ 15c:	29 c1                	sub    ecx,eax                     ; ecx = 原值 - 商*10，即余数
+ 15e:	89 ca                	mov    edx,ecx                     ; edx = 余数
+
+  ; 写回 fib[n][i] = 余数
+ 160:	8b 45 fc             	mov    eax,DWORD PTR [rbp-0x4]     ; eax = i
+ 163:	48 98                	cdqe                               ; i 符号扩展
+ 165:	8b 4d 10             	mov    ecx,DWORD PTR [rbp+0x10]    ; ecx = n
+ 168:	48 63 c9             	movsxd rcx,ecx                           ; n 符号扩展
+ 16b:	48 6b c9 16          	imul   rcx,rcx,0x16                ; rcx = n * 22
+ 16f:	48 01 c8             	add    rax,rcx                     ; rax = n*22 + i
+ 172:	48 8d 0c 85 00 00 00 	lea    rcx,[rax*4+0x0]             ; 转成字节偏移
+ 179:	00 
+ 17a:	48 8d 05 20 00 00 00 	lea    rax,[rip+0x20]              ; 取 fib 基地址
+ 181:	89 14 01             	mov    DWORD PTR [rcx+rax*1],edx   ; fib[n][i] = 余数
+
+  ; fib[n][i + 1] = 1;
+ 184:	8b 45 fc             	mov    eax,DWORD PTR [rbp-0x4]     ; eax = i
+ 187:	83 c0 01             	add    eax,0x1                     ; eax = i + 1
+ 18a:	48 98                	cdqe                               ; i+1 符号扩展
+ 18c:	8b 55 10             	mov    edx,DWORD PTR [rbp+0x10]    ; edx = n
+ 18f:	48 63 d2             	movsxd rdx,edx                           ; n 符号扩展
+ 192:	48 6b d2 16          	imul   rdx,rdx,0x16                ; rdx = n * 22
+ 196:	48 01 d0             	add    rax,rdx                     ; rax = n*22 + (i+1)
+ 199:	48 8d 14 85 00 00 00 	lea    rdx,[rax*4+0x0]             ; 转成字节偏移
+ 1a0:	00 
+ 1a1:	48 8d 05 20 00 00 00 	lea    rax,[rip+0x20]              ; 取 fib 基地址
+ 1a8:	c7 04 02 01 00 00 00 	mov    DWORD PTR [rdx+rax*1],0x1   ; fib[n][i+1] = 1
+
+  ; ++i
+ 1af:	83 45 fc 01          	add    DWORD PTR [rbp-0x4],0x1     ; ++i
+
+  ; for 循环条件：i <= max_len，即 i <= 21
+ 1b3:	b8 15 00 00 00       	mov    eax,0x15                    ; eax = 21
+ 1b8:	39 45 fc             	cmp    DWORD PTR [rbp-0x4],eax     ; 比较 i 与 21
+ 1bb:	0f 8e 8b fe ff ff    	jle    4c <calc+0x4c>              ; 若 i <= 21，继续循环
+
+  ; fib[n][0] = 1;
+ 1c1:	8b 45 10             	mov    eax,DWORD PTR [rbp+0x10]    ; eax = n
+ 1c4:	48 98                	cdqe                               ; n 符号扩展
+ 1c6:	48 6b c0 58          	imul   rax,rax,0x58                ; rax = n * 88
+ 1ca:	48 8d 15 20 00 00 00 	lea    rdx,[rip+0x20]              ; 取 fib 基地址
+ 1d1:	c7 04 10 01 00 00 00 	mov    DWORD PTR [rax+rdx*1],0x1   ; fib[n][0] = 1，标记为已计算
+ 1d8:	eb 01                	jmp    1db <calc+0x1db>           ; 跳到函数返回
+
+  ; 已计算分支直接返回
+ 1da:	90                   	nop
+
+  ; calc 函数收尾
+ 1db:	48 83 c4 30          	add    rsp,0x30                    ; 回收局部变量空间
+ 1df:	5d                   	pop    rbp                         ; 恢复调用者 rbp
+ 1e0:	c3                   	ret                                ; 返回
+
+
+; ==================== main 函数 ====================
+; main 中 [rbp-0x4] 是 first，用于寻找最高非零位并逆序输出
+00000000000001e1 <main>:
+ 1e1:	55                   	push   rbp                         ; 保存调用者的栈基址
+ 1e2:	48 89 e5             	mov    rbp,rsp                     ; 建立当前函数栈基址
+ 1e5:	48 83 ec 30          	sub    rsp,0x30                    ; 开辟 48 字节局部变量空间
+ 1e9:	e8 00 00 00 00       	call   1ee <main+0xd>              ; 调用运行时初始化例程（未连接）
+
+  ; printf("please enter a decimal number between 0 and 100\n");
+ 1ee:	48 8d 05 08 00 00 00 	lea    rax,[rip+0x8]               ; 取提示字符串地址
+ 1f5:	48 89 c1             	mov    rcx,rax                     ; 第一个参数：格式字符串地址
+ 1f8:	e8 00 00 00 00       	call   1fd <main+0x1c>             ; 调用 printf
+
+  ; fib[0][0] = 1;
+ 1fd:	c7 05 1c 00 00 00 01 	mov    DWORD PTR [rip+0x1c],0x1    ; 写全局 fib[0][0] = 1
+ 204:	00 00 00 
+
+  ; fib[1][0] = 1;
+ 207:	c7 05 74 00 00 00 01 	mov    DWORD PTR [rip+0x74],0x1    ; 写全局 fib[1][0] = 1
+ 20e:	00 00 00 
+
+  ; fib[1][1] = 1;
+ 211:	c7 05 78 00 00 00 01 	mov    DWORD PTR [rip+0x78],0x1    ; 写全局 fib[1][1] = 1
+ 218:	00 00 00 
+
+  ; scanf("%d", &n);
+ 21b:	48 8d 05 00 00 00 00 	lea    rax,[rip+0x0]               ; 取全局变量 n 的地址
+ 222:	48 89 c2             	mov    rdx,rax                     ; 第二个参数：&n 放入 rdx
+ 225:	48 8d 05 38 00 00 00 	lea    rax,[rip+0x38]              ; 取格式字符串 "%d" 地址
+ 22c:	48 89 c1             	mov    rcx,rax                     ; 第一个参数：格式字符串放入 rcx
+ 22f:	e8 00 00 00 00       	call   234 <main+0x53>             ; 调用 scanf
+
+  ; printf("The value of that term in the Fibonacci sequence is :\n");
+ 234:	48 8d 05 40 00 00 00 	lea    rax,[rip+0x40]              ; 取输出提示字符串地址
+ 23b:	48 89 c1             	mov    rcx,rax                     ; 第一个参数：格式字符串
+ 23e:	e8 00 00 00 00       	call   243 <main+0x62>             ; 调用 printf
+
+  ; calc(n);
+ 243:	8b 05 00 00 00 00    	mov    eax,DWORD PTR [rip+0x0]     ; eax = 全局变量 n
+ 249:	89 c1                	mov    ecx,eax                     ; 第一个参数 n 放入 ecx
+ 24b:	e8 b0 fd ff ff       	call   0 <calc>                    ; 调用 calc(n)
+
+  ; int first = max_len; 即 first = 21
+ 250:	c7 45 fc 15 00 00 00 	mov    DWORD PTR [rbp-0x4],0x15    ; first = 21
+ 257:	eb 2f                	jmp    288 <main+0xa7>             ; 跳到第一个循环条件判断
+
+  ; for (; first > 1; --first)
+  ;   if (fib[n][first] != 0) break;
+ 259:	8b 15 00 00 00 00    	mov    edx,DWORD PTR [rip+0x0]     ; edx = 全局变量 n
+ 25f:	8b 45 fc             	mov    eax,DWORD PTR [rbp-0x4]     ; eax = first
+ 262:	48 98                	cdqe                               ; first 符号扩展
+ 264:	48 63 d2             	movsxd rdx,edx                           ; n 符号扩展
+ 267:	48 6b d2 16          	imul   rdx,rdx,0x16                ; rdx = n * 22
+ 26b:	48 01 d0             	add    rax,rdx                     ; rax = n*22 + first
+ 26e:	48 8d 14 85 00 00 00 	lea    rdx,[rax*4+0x0]             ; 转成字节偏移
+ 275:	00 
+ 276:	48 8d 05 20 00 00 00 	lea    rax,[rip+0x20]              ; 取 fib 基地址
+ 27d:	8b 04 02             	mov    eax,DWORD PTR [rdx+rax*1]   ; eax = fib[n][first]
+ 280:	85 c0                	test   eax,eax                     ; 判断是否为 0
+ 282:	75 0c                	jne    290 <main+0xaf>             ; 若 fib[n][first] != 0，跳出前导零查找
+ 284:	83 6d fc 01          	sub    DWORD PTR [rbp-0x4],0x1     ; --first
+
+  ; first > 1 时继续查找
+ 288:	83 7d fc 01          	cmp    DWORD PTR [rbp-0x4],0x1     ; 比较 first 与 1
+ 28c:	7f cb                	jg     259 <main+0x78>             ; 若 first > 1，继续循环
+ 28e:	eb 3f                	jmp    2cf <main+0xee>             ; 否则跳到输出循环条件判断
+
+  ; 找到最高非零位后跳出
+ 290:	90                   	nop
+ 291:	eb 3c                	jmp    2cf <main+0xee>             ; 跳到输出循环条件判断
+
+  ; for (; first >= 1; --first)
+  ;   printf("%d", fib[n][first]);
+ 293:	8b 15 00 00 00 00    	mov    edx,DWORD PTR [rip+0x0]     ; edx = 全局变量 n
+ 299:	8b 45 fc             	mov    eax,DWORD PTR [rbp-0x4]     ; eax = first
+ 29c:	48 98                	cdqe                               ; first 符号扩展
+ 29e:	48 63 d2             	movsxd rdx,edx                           ; n 符号扩展
+ 2a1:	48 6b d2 16          	imul   rdx,rdx,0x16                ; rdx = n * 22
+ 2a5:	48 01 d0             	add    rax,rdx                     ; rax = n*22 + first
+ 2a8:	48 8d 14 85 00 00 00 	lea    rdx,[rax*4+0x0]             ; 转成字节偏移
+ 2af:	00 
+ 2b0:	48 8d 05 20 00 00 00 	lea    rax,[rip+0x20]              ; 取 fib 基地址
+ 2b7:	8b 04 02             	mov    eax,DWORD PTR [rdx+rax*1]   ; eax = fib[n][first]
+ 2ba:	89 c2                	mov    edx,eax                     ; 第二个参数：要打印的 digit
+ 2bc:	48 8d 05 38 00 00 00 	lea    rax,[rip+0x38]              ; 取格式字符串 "%d"
+ 2c3:	48 89 c1             	mov    rcx,rax                     ; 第一个参数：格式字符串
+ 2c6:	e8 00 00 00 00       	call   2cb <main+0xea>             ; 调用 printf("%d", fib[n][first])
+ 2cb:	83 6d fc 01          	sub    DWORD PTR [rbp-0x4],0x1     ; --first
+
+  ; first > 0 时继续逆序输出
+ 2cf:	83 7d fc 00          	cmp    DWORD PTR [rbp-0x4],0x0     ; 比较 first 与 0
+ 2d3:	7f be                	jg     293 <main+0xb2>             ; 若 first > 0，继续输出
+
+  ; return 0;
+ 2d5:	b8 00 00 00 00       	mov    eax,0x0                     ; 返回值 0
+ 2da:	48 83 c4 30          	add    rsp,0x30                    ; 回收局部变量空间
+ 2de:	5d                   	pop    rbp                         ; 恢复调用者 rbp
+ 2df:	c3                   	ret                                ; main 返回
